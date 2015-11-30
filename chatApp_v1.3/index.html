@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="chatApp">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Chat Application</title>
+    <link rel="stylesheet" href="public/css/bootstrap.min.css"/>
+       <link rel="stylesheet" href="public/css/angular-material.css"/>
+       <script type="text/javascript" src="public/js/jquery.min.js"></script>
+       <script type="text/javascript" src="public/js/angular.min.js"></script>
+       <script type="text/javascript" src="public/js/angular-material.js"></script>
+       <script type="text/javascript" src="public/js/angular-animate.js"></script>
+       <script type="text/javascript" src="public/js/angular-aria.js"></script>
+       <script type="text/javascript" src="public/js/angular-resource.js"></script>
+       <script type="text/javascript" src="public/js/app.js"></script>
+    <style>
+    #chat{
+      height:500px;
+    }
+    #contentWrap{
+      display:none;
+    }
+    /*#chatWrap{
+      border:1px solid #ddd;
+    }*/
+    .error{
+      color:red;
+    }
+    .whisper{
+      color:gray;
+      font-style:italic;
+    }
+    body{
+      background-color:#ececec;
+    }
+    </style>
+  </head>
+  <body>
+    <div>
+  <md-content>
+    <md-toolbar>
+      <div class="md-toolbar-tools">
+        <md-button class="md-icon-button" aria-label="Settings">
+          <md-icon md-svg-icon="img/icons/menu.svg"></md-icon>
+        </md-button>
+        <h2>
+          <span>Chat Application</span>
+        </h2>
+        <span flex></span>
+        <md-button class="md-icon-button" aria-label="Favorite">
+          <md-icon md-svg-icon="img/icons/favorite.svg" style="color: greenyellow;"></md-icon>
+        </md-button>
+        <md-button class="md-icon-button" aria-label="More">
+          <md-icon md-svg-icon="img/icons/more_vert.svg"></md-icon>
+        </md-button>
+      </div>
+    </md-toolbar>
+</md-content>
+</div>
+
+<div id="nickWrap" layout-align="end center" layout="row"  layout-margin layout-padding>
+    <md-card>
+      <!-- <img ng-src="{{imagePath}}" class="md-card-image" alt="Washed Out"> -->
+      <md-card-content>
+        <form id="setNick">
+            <p id="nickError"></p>
+
+              <md-input-container>
+               <label>Enter your nickname</label>
+               <input ng-model="user.title" id="nickName">
+              </md-input-container>
+      </form>
+      </md-card-content>
+      <!-- <div class="md-actions" layout="row" layout-align="end center">
+        <md-button>Action 1</md-button>
+        <md-button>Action 2</md-button>
+      </div> -->
+    </md-card>
+</div>
+
+        <div layout="row" layout-padding id="contentWrap" >
+          <div layout="row"  layout-fill layout-padding >
+            <div flex="30">
+              <md-card>
+                <md-card-content>
+                    <div id="chatWrap">
+                      <div id="chat"></div>
+                        <form id="send-message">
+                          <md-input-container>
+                            <label>Type message here...</label>
+                           <input ng-model="message" type="text" id="message">
+                          </md-input-container>
+                          <!-- <input type="text" id="message" size="35">
+                          <input type="submit"> -->
+                        </form>
+                    </div>
+                </md-card-content>
+                </md-card></div>
+            <div flex="20">
+              <md-card>
+                <md-card-content>
+                  <div id="users" style="height:500px;"></div>
+                </md-card-content>
+              </md-card>
+            </div>
+          </div>
+
+        </div>
+
+
+  <div id="userTyping"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      jQuery(function($){
+        var socket = io.connect();
+        var $nickForm = $('#setNick');
+        var $nickError = $('#nickError');
+        var $nickBox = $('#nickName');
+        var $typeUser = $('#userTyping');
+
+        var $users = $('#users');
+        var $messageForm = $('#send-message');
+        var $messageBox = $('#message');
+        var $chat = $('#chat');
+
+
+        $nickForm.submit(function(e){
+          e.preventDefault();
+          socket.emit('new user',$nickBox.val(),function(data){
+            if(data){
+              $('#nickWrap').hide();
+              $('#contentWrap').show();
+            }
+            else{
+              $nickError.html('That username is already taken! Please Try again!');
+            }
+          });
+          $nickBox.val('');
+        });
+
+        socket.on('usernames',function(data){
+          var html = '';
+          for(var i=0;i<data.length;i++){
+            html+=data[i] + '<br/>';
+          }
+          $users.html(html);
+        })
+
+
+        $messageBox.keyup(function(e){
+          if(e.keyCode==13 ){
+            // event.preventDefault();
+             $typeUser.html('');
+          }
+          else{
+            socket.emit('is typing', {nick: $('#nickBox').val()});
+          }
+
+        })
+        socket.on('typing',function(data){
+          if(data)
+            $typeUser.html('<b>'+data.nick + '</b>'+' is typing...');
+          else {
+              $typeUser.html('');
+          }
+        })
+
+
+        $messageForm.submit(function(e){
+          e.preventDefault();
+          socket.emit('send message',$messageBox.val(),function(data){
+              $chat.append('<span class="error">'+data+'</span><br/>');
+            //add stuff here
+          });
+          $messageBox.val('');
+        });
+
+        socket.on('new message',function(data){
+          $chat.append('<span class="msg"><b>'+data.nick+'</b>:'+data.msg+'</span><br/>');
+        });
+        socket.on('whisper',function(data){
+          $chat.append('<span class="whisper"><b>'+data.nick+'</b>:'+data.msg+'</span><br/>');
+        });
+
+      })
+    </script>
+</script>
+  </body>
+</html>

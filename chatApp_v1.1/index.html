@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Chat Application</title>
+    <link rel="stylesheet" href="public/css/bootstrap.min.css"/>
+       <link rel="stylesheet" href="public/css/angular-material.css"/>
+       <script type="text/javascript" src="public/js/jquery.min.js"></script>
+       <script type="text/javascript" src="public/js/angular.min.js"></script>
+       <script type="text/javascript" src="public/js/angular-material.js"></script>
+       <script type="text/javascript" src="public/js/angular-animate.js"></script>
+       <script type="text/javascript" src="public/js/angular-aria.js"></script>
+       <script type="text/javascript" src="public/js/angular-resource.js"></script>
+       <script type="text/javascript" src="public/js/app.js"></script>
+    <style>
+    #chat{
+      height:500px;
+    }
+    #contentWrap{
+      display:none;
+    }
+    #chatWrap{
+      border:1px solid #ddd;
+    }
+    </style>
+  </head>
+  <body>
+    <h1>Chat Application</h1>
+
+
+    <div id="nickWrap">
+      <p>Enter username:</p>
+      <p id="nickError"></p>
+      <form id="setNick">
+        <input type="text" id="nickName" size="35"/>
+        <input type="submit"/>
+      </form>
+    </div>
+
+
+    <div id="contentWrap">
+      <div id="chatWrap" class="pull-left">
+        <div id="chat"></div>
+          <form id="send-message">
+            <input type="text" id="message" size="35">
+            <input type="submit">
+          </form>
+          <div id="users"></div>
+
+      </div>
+    </div>
+  <div id="userTyping"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      jQuery(function($){
+        var socket = io.connect();
+        var $nickForm = $('#setNick');
+        var $nickError = $('#nickError');
+        var $nickBox = $('#nickName');
+        var $typeUser = $('#userTyping');
+
+        var $users = $('#users');
+        var $messageForm = $('#send-message');
+        var $messageBox = $('#message');
+        var $chat = $('#chat');
+
+
+        $nickForm.submit(function(e){
+          e.preventDefault();
+          socket.emit('new user',$nickBox.val(),function(data){
+            if(data){
+              $('#nickWrap').hide();
+              $('#contentWrap').show();
+            }
+            else{
+              $nickError.html('That username is already taken! Please Try again!');
+            }
+          });
+          $nickBox.val('');
+        });
+
+        socket.on('usernames',function(data){
+          var html = '';
+          for(var i=0;i<data.length;i++){
+            html+=data[i] + '<br/>';
+          }
+          $users.html(html);
+        })
+
+
+        $messageBox.keyup(function(e){
+          if(e.keyCode==13 ){
+            // event.preventDefault();
+             $typeUser.html('');
+          }
+          else{
+            socket.emit('is typing', {nick: $('#nickBox').val()});
+          }
+
+        })
+        socket.on('typing',function(data){
+          if(data)
+            $typeUser.html('<b>'+data.nick + '</b>'+' is typing...');
+          else {
+              $typeUser.html('');
+          }
+        })
+
+
+        $messageForm.submit(function(e){
+          e.preventDefault();
+          socket.emit('send message',$messageBox.val());
+          $messageBox.val('');
+        });
+
+        socket.on('new message',function(data){
+          $chat.append('<b>'+data.nick+'</b>:'+data.msg+'<br/>');
+        });
+
+      })
+    </script>
+</script>
+  </body>
+</html>
